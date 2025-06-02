@@ -5,7 +5,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_zoom_drawer/flutter_zoom_drawer.dart';
 
-import 'drawer_styles/drawer_styles.dart';
+// ignore: implementation_imports
+import 'package:flutter_zoom_drawer/src/drawer_styles/drawer_styles.dart';
 
 /// Build custom style with (context, animationValue, slideWidth, menuScreen, mainScreen) {}
 typedef DrawerStyleBuilder = Widget Function(
@@ -18,6 +19,7 @@ typedef DrawerStyleBuilder = Widget Function(
 
 class ZoomDrawer extends StatefulWidget {
   const ZoomDrawer({
+    super.key,
     required this.menuScreen,
     required this.mainScreen,
     this.style = DrawerStyle.defaultStyle,
@@ -55,7 +57,6 @@ class ZoomDrawer extends StatefulWidget {
     this.shrinkMainScreen = false,
     this.boxShadow,
     this.drawerStyleBuilder,
-    this.onAnimationValueChange,
   });
 
   /// Layout style
@@ -187,9 +188,6 @@ class ZoomDrawer extends StatefulWidget {
   /// ```
   final DrawerStyleBuilder? drawerStyleBuilder;
 
-  /// Listen to the change of animation value
-  final void Function(double value)? onAnimationValueChange;
-
   @override
   ZoomDrawerState createState() => ZoomDrawerState();
 
@@ -220,9 +218,19 @@ class ZoomDrawerState extends State<ZoomDrawer>
     vsync: this,
     duration: widget.duration,
     reverseDuration: widget.duration,
-  )
-    ..addStatusListener(_animationStatusListener)
-    ..addListener(() => widget.onAnimationValueChange?.call(_animationValue));
+  )..addStatusListener(_animationStatusListener);
+
+  void closeImmediately() {
+    if (mounted) {
+      // Set animation value to 0 (closed position)
+      _animationController.value = 0.0;
+
+      // Update state immediately
+      _stateNotifier.value = DrawerState.closed;
+      _drawerLastAction = DrawerLastAction.closed;
+      _absorbingMainScreen.value = false;
+    }
+  }
 
   double get _animationValue => _animationController.value;
 
@@ -387,6 +395,7 @@ class ZoomDrawerState extends State<ZoomDrawer>
 
     widget.controller!.open = open;
     widget.controller!.close = close;
+    widget.controller!.closeImmediately = closeImmediately;
     widget.controller!.toggle = toggle;
     widget.controller!.isOpen = isOpen;
     widget.controller!.stateNotifier = stateNotifier;
@@ -498,12 +507,12 @@ class ZoomDrawerState extends State<ZoomDrawer>
 
     /// Sliding X
     final xPosition =
-        ((widget.slideWidth - slide) * _animationValue * _slideDirection) *
-            slidePercent;
+        ((widget.slideWidth - slide) * _animationValue * 0.8) * slidePercent;
 
     /// Sliding Y
     final yPosition =
-        ((widget.slideHeight - slide) * _animationValue) * slidePercent;
+        ((widget.slideHeight - slide) * _animationValue * _slideDirection) *
+            slidePercent;
 
     /// Scale
     final scalePercentage = scale - (widget.mainScreenScale * scalePercent);
@@ -574,7 +583,7 @@ class ZoomDrawerState extends State<ZoomDrawer>
     if (widget.menuScreenOverlayColor != null) {
       final overlayColor = ColorTween(
         begin: widget.menuScreenOverlayColor,
-        end: widget.menuScreenOverlayColor!.withOpacity(0.0),
+        end: widget.menuScreenOverlayColor!.withValues(alpha: 0.0),
       );
 
       menuScreen = ColorFiltered(
@@ -614,7 +623,7 @@ class ZoomDrawerState extends State<ZoomDrawer>
     // Add layer - Overlay color
     if (widget.mainScreenOverlayColor != null) {
       final overlayColor = ColorTween(
-        begin: widget.mainScreenOverlayColor!.withOpacity(0.0),
+        begin: widget.mainScreenOverlayColor!.withValues(alpha: 0.0),
         end: widget.mainScreenOverlayColor,
       );
       mainScreen = ColorFiltered(
@@ -646,7 +655,7 @@ class ZoomDrawerState extends State<ZoomDrawer>
           boxShadow: widget.boxShadow ??
               [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.5),
+                  color: Colors.black.withValues(alpha: 0.5),
                   blurRadius: 5,
                 )
               ],

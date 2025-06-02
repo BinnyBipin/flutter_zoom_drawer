@@ -8,6 +8,9 @@ class ZoomDrawerController {
   /// Close drawer
   TickerFuture? Function()? close;
 
+  /// Close drawer immediately without animation
+  void Function()? closeImmediately;
+
   /// Toggle drawer
   TickerFuture? Function({bool forceToggle})? toggle;
 
